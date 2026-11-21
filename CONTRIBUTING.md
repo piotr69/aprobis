@@ -34,4 +34,14 @@ Integration tests wipe and re-seed `AprobisTest`. The test setup refuses any oth
   described in `prisma/MIGRATIONS.md`.
 - Never commit `.env`, logs, uploaded files or real company data.
 
+## User guide
+
+`docs/instrukcja-obslugi.md` (Polish) and `docs/user-guide.md` (English) are the source of truth for the user guide and serve as the knowledge source for a company AI assistant. After editing either Markdown file, regenerate `docs/Aprobis-instrukcja-obslugi.pdf` and `docs/Aprobis-user-guide.pdf` without adding dependencies to the repository: convert the Markdown to a temporary HTML file with A4 print CSS (18 mm margins, `@page` footer page numbers, local screenshot URLs, and relative `.md` links rewritten to `https://github.com/piotr69/aprobis/blob/main/...`), then render it with headless Chrome or Edge:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu --no-pdf-header-footer --user-data-dir="$env:TEMP\aprobis-pdf" --virtual-time-budget=10000 --print-to-pdf="docs\Aprobis-instrukcja-obslugi.pdf" "file:///.../Aprobis-instrukcja-obslugi.html"
+```
+
+Run the same command for `docs\Aprobis-user-guide.pdf`, then inspect page breaks, tables, screenshots, internal links, and file size (< 5 MB) before committing.
+
 By contributing you agree that your contributions are licensed under the MIT License.

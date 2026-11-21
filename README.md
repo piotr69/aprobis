@@ -101,7 +101,7 @@ For a fresh database without demo data, run `npm run db:migrate:deploy`, `npm ru
 3. Configure approval paths and approval limits for your document types.
 4. Configure SMTP under **Administracja → Konfiguracja** for notifications and password reset emails.
 
-For day-to-day usage and administration details, see the [User guide](docs/user-guide.md) (also available in [Polish](docs/instrukcja-obslugi.md)).
+For day-to-day usage and administration details, open the [User guide (PDF)](docs/Aprobis-user-guide.pdf) (also in [Polish PDF](docs/Aprobis-instrukcja-obslugi.pdf)). The Markdown files ([English](docs/user-guide.md), [Polish](docs/instrukcja-obslugi.md)) are kept as a knowledge source for a company AI assistant.
 
 ## Configuration
 
@@ -130,8 +130,8 @@ Use [GitHub Issues](https://github.com/piotr69/aprobis/issues) for bugs and idea
 ## Documentation (Polish, except where noted)
 
 - [Docker installation](docs/instalacja-docker.md) · [Windows Server installation](docs/instalacja-windows.md)
-- [User guide](docs/user-guide.md) (English; [Polish](docs/instrukcja-obslugi.md)) · [Workflow and roles](docs/workflow.md)
-- [API](docs/api.md) · [Data model](docs/model-danych.md) · [Migrations](prisma/MIGRATIONS.md)
+- User guide: [English PDF](docs/Aprobis-user-guide.pdf) · [Polish PDF](docs/Aprobis-instrukcja-obslugi.pdf) (Markdown for a company AI assistant: [EN](docs/user-guide.md), [PL](docs/instrukcja-obslugi.md))
+- [Workflow and roles](docs/workflow.md) · [API](docs/api.md) · [Data model](docs/model-danych.md) · [Migrations](prisma/MIGRATIONS.md)
 - [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## License

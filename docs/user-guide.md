@@ -1,5 +1,8 @@
 # Aprobis user guide
 
+> [!NOTE]
+> This Markdown file is the knowledge source for a company AI assistant (for example, an internal helper answering employee questions about Aprobis). For reading and printing, use the PDF version: [Aprobis-user-guide.pdf](Aprobis-user-guide.pdf).
+
 Aprobis manages electronic document workflows and approvals inside a company: an employee creates a document, the system assigns the approval path, and every decision is recorded in the document history and audit log.
 
 The Aprobis interface is available in Polish only; screen names, buttons, fields, and statuses appear in Polish as shown in the application, with English explanations at first use.

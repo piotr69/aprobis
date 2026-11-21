@@ -1,5 +1,8 @@
 # Instrukcja obsługi Aprobis
 
+> [!NOTE]
+> Ten plik w formacie Markdown jest źródłem wiedzy dla asystenta AI w firmie (np. pomocnika odpowiadającego pracownikom na pytania o Aprobis). Do czytania i drukowania służy wersja PDF: [Aprobis-instrukcja-obslugi.pdf](Aprobis-instrukcja-obslugi.pdf).
+
 Aprobis obsługuje elektroniczny obieg i akceptację dokumentów w firmie: pracownik tworzy dokument, system wyznacza ścieżkę akceptacji, a każda decyzja zapisuje się w historii i dzienniku zdarzeń.
 
 Ta instrukcja jest przeznaczona dla dwóch grup: użytkowników pracujących z dokumentami (pracownik, osoba akceptująca, odbiorca etapu „do wiadomości”, audytor) oraz administratorów konfigurujących system po instalacji. Dokument nie opisuje instalacji ani utrzymania serwera; te procedury znajdują się w [instrukcji Docker](instalacja-docker.md) oraz [instrukcji Windows Server](instalacja-windows.md).
