@@ -1,0 +1,9 @@
+# Optional override for a deliberate installation without antivirus scanning.
+# Use with AV_SCANNER=disabled; the worker then starts without clamd.
+services:
+  clamav:
+    profiles: [scanner]
+  worker:
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully

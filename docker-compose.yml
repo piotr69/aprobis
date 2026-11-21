@@ -1,0 +1,184 @@
+name: ${COMPOSE_PROJECT_NAME:-aprobis}
+
+x-app: &app
+  image: aprobis:0.0.1
+  build:
+    context: .
+    args:
+      API_INTERNAL_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: /api
+  platform: linux/amd64
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-runtime-env: &runtime-env
+  NODE_ENV: production
+  SQL_HOST: db
+  SQL_DATABASE: Aprobis
+  SQL_APP_LOGIN: aprobis_app
+  SQL_APP_PASSWORD_FILE: /run/secrets/sql_app_password
+  FRONTEND_URL: ${PUBLIC_URL:?Set PUBLIC_URL in .env.docker}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-0}
+  FILE_STORAGE_PATH: /data/storage
+  LOG_PATH: /data/logs
+  AV_SCANNER: ${AV_SCANNER:-clamav}
+  CLAMAV_HOST: clamav
+  CLAMAV_PORT: "3310"
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-CU28-ubuntu-22.04@sha256:4525e3efac9f3e241cb003bb2ff2a82818b502f37e12049d788b1a9fa7e13b7f
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA:?Read the SQL Server license and set ACCEPT_EULA=Y}
+      MSSQL_PID: Express
+      MSSQL_COLLATION: Polish_100_CI_AS
+    entrypoint: [/bin/bash, -ec]
+    command:
+      - 'export MSSQL_SA_PASSWORD="$$(sed ''1s/^\xEF\xBB\xBF//'' /run/secrets/sql_sa_password | tr -d ''\r\n'')"; exec /opt/mssql/bin/sqlservr'
+    secrets: [sql_sa_password]
+    volumes:
+      - database:/var/opt/mssql
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'SQLCMDPASSWORD="$$(sed ''1s/^\xEF\xBB\xBF//'' /run/secrets/sql_sa_password | tr -d ''\r\n'')" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -I -b -l 5 -Q "SELECT 1" -o /dev/null']
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  clamav:
+    image: clamav/clamav:1.4.7_base-debian13-slim@sha256:03f28e8ddca4284fa5c6bd6718e90d32b01b71d6a997b8947a06d7b17ff7e840
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      CLAMD_CONF_StreamMaxLength: 30M
+      CLAMD_CONF_MaxFileSize: 30M
+      CLAMD_CONF_MaxScanSize: 100M
+      CLAMD_CONF_AlertExceedsMax: "yes"
+    volumes:
+      - signatures:/var/lib/clamav
+    networks: [scanner]
+    healthcheck:
+      test: [CMD, clamdcheck.sh]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  migrate:
+    <<: *app
+    command: [migrate]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      SQL_HOST: db
+      SQL_DATABASE: Aprobis
+      SQL_APP_LOGIN: aprobis_app
+      SQL_APP_PASSWORD_FILE: /run/secrets/sql_app_password
+      SQL_SA_PASSWORD_FILE: /run/secrets/sql_sa_password
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+      ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:?Set ADMIN_FIRST_NAME}
+      ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:?Set ADMIN_LAST_NAME}
+      ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+    secrets: [sql_sa_password, sql_app_password, admin_password]
+    networks: [database]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: [api]
+    restart: unless-stopped
+    environment:
+      <<: *runtime-env
+      HOST: 0.0.0.0
+      PORT: "4000"
+    secrets: [sql_app_password]
+    volumes:
+      - storage:/data/storage
+      - logs:/data/logs
+    networks: [web, database]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, node, deployment/docker/healthcheck.mjs, api]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: [worker]
+    restart: unless-stopped
+    environment:
+      <<: *runtime-env
+      WORKER_HEARTBEAT_FILE: /tmp/aprobis-worker-heartbeat
+    secrets: [sql_app_password]
+    volumes:
+      - storage:/data/storage
+      - logs:/data/logs
+    networks: [database, scanner]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, deployment/docker/healthcheck.mjs, worker]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    stop_grace_period: 150s
+
+  web:
+    <<: *app
+    command: [web]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    networks: [web]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, deployment/docker/healthcheck.mjs, web]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+secrets:
+  sql_sa_password:
+    file: ${SQL_SA_PASSWORD_FILE:?Set SQL_SA_PASSWORD_FILE}
+  sql_app_password:
+    file: ${SQL_APP_PASSWORD_FILE:?Set SQL_APP_PASSWORD_FILE}
+  admin_password:
+    file: ${ADMIN_PASSWORD_FILE:?Set ADMIN_PASSWORD_FILE}
+
+volumes:
+  database:
+  storage:
+  logs:
+  signatures:
+
+networks:
+  web:
+  database:
+    internal: true
+  # FreshClam needs Internet access to download signature updates.
+  scanner:

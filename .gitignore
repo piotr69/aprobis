@@ -1,0 +1,30 @@
+# Zależności i buildy
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+coverage/
+.release/
+
+# Konfiguracja lokalna i sekrety (szablony *.example są w repo)
+.env*
+.secrets/
+!.env.example
+!.env.*.example
+!*.env.example
+
+# Dane i logi działającej aplikacji
+backend/logs/
+backend/storage/*
+!backend/storage/.gitkeep
+backend/src/storage/*
+!backend/src/storage/.gitkeep
+*.log
+release.json
+*.zip
+
+# Narzędzia i notatki robocze agentów
+.claude/
+.agents-inbox/
+.vscode/
+.idea/

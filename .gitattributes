@@ -1,0 +1,21 @@
+# Jednolite końce linii w repo; skrypty Windows z CRLF.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.pdf binary
+
+# Poza paczką instalacyjną (deployment/New-Package.ps1 → git archive): niepotrzebne do npm ci, build,
+# migracji, db:bootstrap i db:create-admin. seed.ts kasuje bazę i tworzy konta demo — nie należy do produkcji.
+/backend/tests/ export-ignore
+/backend/vitest.config.ts export-ignore
+/backend/vitest.integration.config.ts export-ignore
+/prisma/seed.ts export-ignore
+/scripts/dev.mjs export-ignore
+/CLAUDE.md export-ignore
+/CONTRIBUTING.md export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/docs/scenariusze-testowe.md export-ignore
+/docs/dalsza-rozbudowa.md export-ignore

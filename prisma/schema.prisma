@@ -1,0 +1,890 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String   @id @default(cuid()) @db.NVarChar(32)
+  email                 String   @unique @db.NVarChar(320)
+  // Unikalność pilnuje filtrowany indeks z migracji: Prisma nie umie go zadeklarować.
+  login                 String?  @db.NVarChar(60)
+  passwordHash          String   @db.NVarChar(255)
+  firstName             String   @db.NVarChar(120)
+  lastName              String   @db.NVarChar(120)
+  role                  String   @default("EMPLOYEE") @db.NVarChar(40)
+  permissionsJson       String?  @db.NVarChar(Max)
+  departmentId          String?  @db.NVarChar(32)
+  positionId            String?  @db.NVarChar(32)
+  managerId             String?  @db.NVarChar(32)
+  decisionLevel         Int      @default(0)
+  approvalLimitAmount   Decimal? @db.Decimal(18, 2)
+  approvalLimitCurrency String   @default("PLN") @db.NVarChar(3)
+  location              String?  @db.NVarChar(120)
+  isActive              Boolean  @default(true)
+  failedLoginAttempts   Int      @default(0)
+  lockedAt              DateTime?
+  resetTokenHash        String?  @db.NVarChar(64)
+  resetTokenExpires     DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  department              Department?             @relation("DepartmentUsers", fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  position                Position?               @relation(fields: [positionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  manager                 User?                   @relation("UserManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates            User[]                  @relation("UserManager")
+  managedDepartments      Department[]            @relation("DepartmentManager")
+  authoredDocuments       Document[]              @relation("DocumentAuthor")
+  uploadedFiles           DocumentFile[]          @relation("FileUploader")
+  substitutions           UserSubstitution[]      @relation("SubstitutedUser")
+  substituteFor           UserSubstitution[]      @relation("SubstituteUser")
+  startedWorkflows        WorkflowInstance[]      @relation("WorkflowStarter")
+  assignedTasks           WorkflowTask[]          @relation("AssignedTaskUser")
+  delegatedTasks          WorkflowTask[]          @relation("DelegatedFromUser")
+  actions                 WorkflowAction[]        @relation("ActionUser")
+  comments                Comment[]               @relation("CommentUser")
+  notifications           Notification[]          @relation("NotificationUser")
+  auditLogs               AuditLog[]              @relation("AuditUser")
+  managedProjects         Project[]               @relation("ProjectManager")
+  sessions                Session[]
+  roleAssignments         UserRole[]
+  groupMemberships        GroupMember[]
+  stageAssignments        WorkflowStageAssignee[]
+  workflowStepAssignments WorkflowStep[]
+  taskCandidates          WorkflowTaskCandidate[]
+  auditEvents             AuditEvent[]            @relation("AuditActor")
+  substitutedAuditEvents  AuditEvent[]            @relation("AuditSubstitutedUser")
+  configChanges           AppConfig[]             @relation("AppConfigUpdatedBy")
+  stageRecipients         WorkflowStageRecipient[]
+
+  @@index([departmentId])
+  @@index([managerId])
+  @@index([isActive, role])
+}
+
+model Session {
+  id         String    @id @default(cuid()) @db.NVarChar(32)
+  userId     String    @db.NVarChar(32)
+  tokenHash  String    @unique @db.NVarChar(64)
+  expiresAt  DateTime
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+  ipAddress  String?   @db.NVarChar(80)
+  userAgent  String?   @db.NVarChar(300)
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+model RateLimitBucket {
+  key         String   @db.NVarChar(200)
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+}
+
+model Role {
+  id          String   @id @default(cuid()) @db.NVarChar(32)
+  code        String   @unique @db.NVarChar(80)
+  name        String   @db.NVarChar(180)
+  description String?  @db.NVarChar(500)
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users            UserRole[]
+  permissions      RolePermission[]
+  stageAssignments WorkflowStageAssignee[]
+  taskCandidates   WorkflowTaskCandidate[]
+}
+
+model Permission {
+  id          String   @id @default(cuid()) @db.NVarChar(32)
+  code        String   @unique @db.NVarChar(100)
+  name        String   @db.NVarChar(180)
+  description String?  @db.NVarChar(500)
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model UserRole {
+  userId     String    @db.NVarChar(32)
+  roleId     String    @db.NVarChar(32)
+  validFrom  DateTime  @default(now())
+  validTo    DateTime?
+  assignedAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, roleId])
+  @@index([roleId, validTo])
+}
+
+model RolePermission {
+  roleId       String @db.NVarChar(32)
+  permissionId String @db.NVarChar(32)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([roleId, permissionId])
+}
+
+model Group {
+  id          String   @id @default(cuid()) @db.NVarChar(32)
+  code        String   @unique @db.NVarChar(80)
+  name        String   @db.NVarChar(180)
+  description String?  @db.NVarChar(500)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members          GroupMember[]
+  stageAssignments WorkflowStageAssignee[]
+  taskCandidates   WorkflowTaskCandidate[]
+}
+
+model GroupMember {
+  groupId   String    @db.NVarChar(32)
+  userId    String    @db.NVarChar(32)
+  validFrom DateTime  @default(now())
+  validTo   DateTime?
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([groupId, userId])
+  @@index([userId, validTo])
+}
+
+model Department {
+  id                 String   @id @default(cuid()) @db.NVarChar(32)
+  name               String   @db.NVarChar(180)
+  code               String   @unique @db.NVarChar(40)
+  parentDepartmentId String?  @db.NVarChar(32)
+  managerId          String?  @db.NVarChar(32)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  parent                  Department?             @relation("DepartmentTree", fields: [parentDepartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children                Department[]            @relation("DepartmentTree")
+  manager                 User?                   @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                   User[]                  @relation("DepartmentUsers")
+  documents               Document[]              @relation("DocumentDepartment")
+  costCenters             CostCenter[]
+  organizationUnits       OrganizationUnit[]
+  stageAssignments        WorkflowStageAssignee[]
+  workflowStepAssignments WorkflowStep[]
+
+  @@index([parentDepartmentId])
+  @@index([managerId])
+}
+
+model Position {
+  id           String  @id @default(cuid()) @db.NVarChar(32)
+  name         String  @db.NVarChar(160)
+  level        Int     @default(0)
+  isManagerial Boolean @default(false)
+  users        User[]
+}
+
+model OrganizationUnit {
+  id           String  @id @default(cuid()) @db.NVarChar(32)
+  name         String  @db.NVarChar(180)
+  type         String  @db.NVarChar(60)
+  parentId     String? @db.NVarChar(32)
+  departmentId String? @db.NVarChar(32)
+  location     String? @db.NVarChar(120)
+  isActive     Boolean @default(true)
+
+  parent     OrganizationUnit?  @relation("OrganizationUnitTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children   OrganizationUnit[] @relation("OrganizationUnitTree")
+  department Department?        @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([parentId])
+  @@index([departmentId])
+}
+
+model UserSubstitution {
+  id               String   @id @default(cuid()) @db.NVarChar(32)
+  userId           String   @db.NVarChar(32)
+  substituteUserId String   @db.NVarChar(32)
+  validFrom        DateTime
+  validTo          DateTime
+  scope            String   @default("ALL") @db.NVarChar(80)
+  isActive         Boolean  @default(true)
+
+  user           User @relation("SubstitutedUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  substituteUser User @relation("SubstituteUser", fields: [substituteUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, validFrom, validTo])
+}
+
+model DocumentType {
+  id                 String   @id @default(cuid()) @db.NVarChar(32)
+  name               String   @db.NVarChar(180)
+  code               String   @unique @db.NVarChar(60)
+  category           String   @db.NVarChar(40)
+  requiresAmount     Boolean  @default(false)
+  requiresContractor Boolean  @default(false)
+  fieldsJson         String?  @db.NVarChar(Max)
+  titleTemplate      String?  @db.NVarChar(240)
+  defaultWorkflowId  String?  @db.NVarChar(32)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  documents       Document[]
+  workflows       WorkflowDefinition[]   @relation("DocumentTypeWorkflows")
+  defaultWorkflow WorkflowDefinition?    @relation("DefaultWorkflow", fields: [defaultWorkflowId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approvalRules   ApprovalRule[]
+  versions        DocumentTypeVersion[]
+  accessPolicies  DocumentAccessPolicy[]
+
+  @@index([defaultWorkflowId])
+  @@index([isActive, category])
+}
+
+model DocumentTypeVersion {
+  id             String    @id @default(cuid()) @db.NVarChar(32)
+  documentTypeId String    @db.NVarChar(32)
+  version        Int
+  status         String    @default("DRAFT") @db.NVarChar(24)
+  titleTemplate  String?   @db.NVarChar(240)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  documentType           DocumentType               @relation(fields: [documentTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fields                 DocumentFieldDefinition[]
+  validationRules        ValidationRule[]
+  attachmentRequirements AttachmentRequirement[]
+  statusDefinitions      DocumentStatusDefinition[]
+  transitions            DocumentTransition[]
+  documents              Document[]
+
+  @@unique([documentTypeId, version])
+  @@index([documentTypeId, status, version])
+}
+
+model DocumentFieldDefinition {
+  id                    String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeVersionId String  @db.NVarChar(32)
+  key                   String  @db.NVarChar(100)
+  label                 String  @db.NVarChar(180)
+  fieldType             String  @db.NVarChar(40)
+  sortOrder             Int
+  isRequired            Boolean @default(false)
+  isSearchable          Boolean @default(false)
+  uiConfigJson          String? @db.NVarChar(Max)
+  defaultValueJson      String? @db.NVarChar(Max)
+
+  documentTypeVersion DocumentTypeVersion @relation(fields: [documentTypeVersionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  validationRules     ValidationRule[]
+
+  @@unique([documentTypeVersionId, key])
+  @@index([documentTypeVersionId, sortOrder])
+}
+
+model ValidationRule {
+  id                    String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeVersionId String  @db.NVarChar(32)
+  fieldDefinitionId     String? @db.NVarChar(32)
+  status                String? @db.NVarChar(40)
+  ruleType              String  @db.NVarChar(60)
+  configJson            String  @db.NVarChar(Max)
+  message               String? @db.NVarChar(300)
+  sortOrder             Int     @default(0)
+
+  documentTypeVersion DocumentTypeVersion      @relation(fields: [documentTypeVersionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fieldDefinition     DocumentFieldDefinition? @relation(fields: [fieldDefinitionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([documentTypeVersionId, status, sortOrder])
+  @@index([fieldDefinitionId])
+}
+
+model AttachmentRequirement {
+  id                    String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeVersionId String  @db.NVarChar(32)
+  key                   String  @db.NVarChar(100)
+  label                 String  @db.NVarChar(180)
+  status                String? @db.NVarChar(40)
+  minCount              Int     @default(1)
+  maxCount              Int?
+  allowedMimeTypesJson  String? @db.NVarChar(Max)
+  maxSizeBytes          Int?
+
+  documentTypeVersion DocumentTypeVersion @relation(fields: [documentTypeVersionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([documentTypeVersionId, key])
+  @@index([documentTypeVersionId, status])
+}
+
+model DocumentStatusDefinition {
+  id                    String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeVersionId String  @db.NVarChar(32)
+  code                  String  @db.NVarChar(40)
+  label                 String  @db.NVarChar(120)
+  sortOrder             Int
+  isInitial             Boolean @default(false)
+  isFinal               Boolean @default(false)
+
+  documentTypeVersion DocumentTypeVersion  @relation(fields: [documentTypeVersionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fromTransitions     DocumentTransition[] @relation("TransitionFrom")
+  toTransitions       DocumentTransition[] @relation("TransitionTo")
+
+  @@unique([documentTypeVersionId, code])
+  @@index([documentTypeVersionId, sortOrder])
+}
+
+model DocumentTransition {
+  id                    String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeVersionId String  @db.NVarChar(32)
+  code                  String  @db.NVarChar(80)
+  fromStatusId          String  @db.NVarChar(32)
+  toStatusId            String  @db.NVarChar(32)
+  requiredPermission    String? @db.NVarChar(100)
+  conditionJson         String? @db.NVarChar(Max)
+
+  documentTypeVersion DocumentTypeVersion      @relation(fields: [documentTypeVersionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fromStatus          DocumentStatusDefinition @relation("TransitionFrom", fields: [fromStatusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  toStatus            DocumentStatusDefinition @relation("TransitionTo", fields: [toStatusId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([documentTypeVersionId, code])
+  @@index([fromStatusId, toStatusId])
+}
+
+model Document {
+  id              String    @id @default(cuid()) @db.NVarChar(32)
+  number          String    @unique @db.NVarChar(80)
+  title           String    @db.NVarChar(240)
+  typeId          String    @db.NVarChar(32)
+  typeVersionId   String?   @db.NVarChar(32)
+  authorId        String    @db.NVarChar(32)
+  departmentId    String?   @db.NVarChar(32)
+  amount          Decimal?  @db.Decimal(18, 2)
+  currency        String    @default("PLN") @db.NVarChar(3)
+  contractorName  String?   @db.NVarChar(240)
+  costCenterId    String?   @db.NVarChar(32)
+  projectId       String?   @db.NVarChar(32)
+  location        String?   @db.NVarChar(120)
+  metadataJson    String?   @db.NVarChar(Max)
+  dataJson        String    @default("{}") @db.NVarChar(Max)
+  status          String    @default("DRAFT") @db.NVarChar(40)
+  currentStepName String?   @db.NVarChar(180)
+  version         Int       @default(1)
+  rowVersion      Bytes     @default(dbgenerated()) @map("row_version") @db.VarBinary(8)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  submittedAt     DateTime?
+  archivedAt      DateTime?
+
+  type              DocumentType              @relation(fields: [typeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  typeVersion       DocumentTypeVersion?      @relation(fields: [typeVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  author            User                      @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department        Department?               @relation("DocumentDepartment", fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  costCenter        CostCenter?               @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  project           Project?                  @relation(fields: [projectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  files             DocumentFile[]
+  workflowInstances WorkflowInstance[]
+  tasks             WorkflowTask[]
+  actions           WorkflowAction[]
+  comments          Comment[]
+  notifications     Notification[]
+  fieldProjections  DocumentFieldProjection[]
+  accessPolicies    DocumentAccessPolicy[]
+  stageRecipients   WorkflowStageRecipient[]
+
+  @@index([status, updatedAt])
+  @@index([typeId, status, updatedAt])
+  @@index([typeVersionId])
+  @@index([authorId, status, updatedAt])
+  @@index([departmentId, status])
+}
+
+model DocumentFieldProjection {
+  id          String    @id @default(cuid()) @db.NVarChar(32)
+  documentId  String    @db.NVarChar(32)
+  fieldKey    String    @db.NVarChar(100)
+  stringValue String?   @db.NVarChar(500)
+  numberValue Decimal?  @db.Decimal(28, 8)
+  dateValue   DateTime?
+  boolValue   Boolean?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([documentId, fieldKey])
+  @@index([fieldKey, stringValue])
+  @@index([fieldKey, numberValue])
+  @@index([fieldKey, dateValue])
+}
+
+model DocumentAccessPolicy {
+  id             String  @id @default(cuid()) @db.NVarChar(32)
+  documentTypeId String? @db.NVarChar(32)
+  documentId     String? @db.NVarChar(32)
+  permission     String  @db.NVarChar(40)
+  subjectType    String  @db.NVarChar(40)
+  subjectId      String? @db.NVarChar(100)
+  conditionJson  String? @db.NVarChar(Max)
+  isActive       Boolean @default(true)
+  priority       Int     @default(100)
+
+  documentType DocumentType? @relation(fields: [documentTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document     Document?     @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([documentId, permission, isActive])
+  @@index([documentTypeId, permission, isActive, priority])
+}
+
+model DocumentFile {
+  id               String    @id @default(cuid()) @db.NVarChar(32)
+  documentId       String    @db.NVarChar(32)
+  version          Int       @default(1)
+  originalName     String    @db.NVarChar(260)
+  storagePath      String    @db.NVarChar(600)
+  mimeType         String    @db.NVarChar(120)
+  detectedMimeType String?   @db.NVarChar(120)
+  sha256           String?   @db.NVarChar(64)
+  scanStatus       String    @default("PENDING") @db.NVarChar(24)
+  scanMessage      String?   @db.NVarChar(500)
+  scannedAt        DateTime?
+  size             Int
+  uploadedById     String    @db.NVarChar(32)
+  createdAt        DateTime  @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  uploadedBy User     @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([documentId, version])
+  @@index([documentId, createdAt])
+  @@index([scanStatus, createdAt])
+}
+
+model WorkflowDefinition {
+  id             String    @id @default(cuid()) @db.NVarChar(32)
+  name           String    @db.NVarChar(180)
+  documentTypeId String?   @db.NVarChar(32)
+  version        Int       @default(1)
+  status         String    @default("DRAFT") @db.NVarChar(24)
+  isActive       Boolean   @default(true)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  documentType    DocumentType?      @relation("DocumentTypeWorkflows", fields: [documentTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  defaultForTypes DocumentType[]     @relation("DefaultWorkflow")
+  steps           WorkflowStep[]
+  instances       WorkflowInstance[]
+
+  @@unique([documentTypeId, version])
+  @@index([documentTypeId, isActive, version])
+}
+
+model WorkflowStep {
+  id                   String  @id @default(cuid()) @db.NVarChar(32)
+  workflowDefinitionId String  @db.NVarChar(32)
+  name                 String  @db.NVarChar(180)
+  stepType             String  @db.NVarChar(60)
+  /// DECISION: decyzja wstrzymująca obieg. INFO: dokument przekazany do wiadomości, obieg idzie dalej.
+  stageKind            String  @default("DECISION") @db.NVarChar(20)
+  order                Int
+  stageNo              Int     @default(1)
+  parallelGroup        Int     @default(1)
+  completionMode       String  @default("ALL") @db.NVarChar(20)
+  requiredApprovals    Int     @default(1)
+  rejectMode           String  @default("STOP") @db.NVarChar(30)
+  assigneeType         String  @db.NVarChar(60)
+  assigneeRole         String? @db.NVarChar(40)
+  assigneeUserId       String? @db.NVarChar(32)
+  assigneeDepartmentId String? @db.NVarChar(32)
+  dueDays              Int     @default(2)
+  requiredPermission   String? @db.NVarChar(80)
+  requiresComment      Boolean @default(false)
+  requiresAttachment   Boolean @default(false)
+  canDelegate          Boolean @default(true)
+  canReturn            Boolean @default(true)
+  allowSelfApproval    Boolean @default(false)
+  entryConditionJson   String? @db.NVarChar(Max)
+  exitConditionJson    String? @db.NVarChar(Max)
+
+  workflowDefinition WorkflowDefinition      @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assigneeUser       User?                   @relation(fields: [assigneeUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assigneeDepartment Department?             @relation(fields: [assigneeDepartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignees          WorkflowStageAssignee[]
+  tasks              WorkflowTask[]
+  snapshotStages     WorkflowInstanceStage[]
+
+  @@index([workflowDefinitionId, stageNo, parallelGroup, order])
+  @@index([assigneeUserId])
+  @@index([assigneeDepartmentId])
+}
+
+model WorkflowStageAssignee {
+  id           String  @id @default(cuid()) @db.NVarChar(32)
+  stepId       String  @db.NVarChar(32)
+  assigneeType String  @db.NVarChar(40)
+  userId       String? @db.NVarChar(32)
+  roleId       String? @db.NVarChar(32)
+  groupId      String? @db.NVarChar(32)
+  departmentId String? @db.NVarChar(32)
+  sortOrder    Int     @default(0)
+
+  step       WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User?        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role       Role?        @relation(fields: [roleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  group      Group?       @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department?  @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([stepId, sortOrder])
+}
+
+model WorkflowInstance {
+  id                   String    @id @default(cuid()) @db.NVarChar(32)
+  documentId           String    @db.NVarChar(32)
+  workflowDefinitionId String?   @db.NVarChar(32)
+  status               String    @default("ACTIVE") @db.NVarChar(40)
+  startedById          String    @db.NVarChar(32)
+  startedAt            DateTime  @default(now())
+  completedAt          DateTime?
+
+  document           Document                @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workflowDefinition WorkflowDefinition?     @relation(fields: [workflowDefinitionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  startedBy          User                    @relation("WorkflowStarter", fields: [startedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stages             WorkflowInstanceStage[]
+  tasks              WorkflowTask[]
+
+  @@index([documentId, status, startedAt])
+  @@index([status, startedAt])
+}
+
+model WorkflowInstanceStage {
+  id                 String    @id @default(cuid()) @db.NVarChar(32)
+  instanceId         String    @db.NVarChar(32)
+  sourceStepId       String?   @db.NVarChar(32)
+  stageNo            Int
+  parallelGroup      Int
+  name               String    @db.NVarChar(180)
+  stageKind          String    @default("DECISION") @db.NVarChar(20)
+  completionMode     String    @db.NVarChar(20)
+  requiredApprovals  Int
+  rejectMode         String    @db.NVarChar(30)
+  requiredPermission String?   @db.NVarChar(80)
+  requiresComment    Boolean   @default(false)
+  requiresAttachment Boolean   @default(false)
+  canDelegate        Boolean   @default(true)
+  canReturn          Boolean   @default(true)
+  configSnapshotJson String?   @db.NVarChar(Max)
+  status             String    @default("PENDING") @db.NVarChar(30)
+  openedAt           DateTime?
+  completedAt        DateTime?
+
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sourceStep WorkflowStep?    @relation(fields: [sourceStepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tasks      WorkflowTask[]
+  recipients WorkflowStageRecipient[]
+
+  @@unique([instanceId, stageNo, parallelGroup])
+  @@index([instanceId, status, stageNo])
+}
+
+/// Odbiorca etapu „do wiadomości”: wgląd w dokument bez decyzji, komentarzy i notatek wewnętrznych.
+/// Powstaje dopiero, gdy obieg dojdzie do etapu; zwrot do poprawy i anulowanie zmieniają status na REVOKED.
+model WorkflowStageRecipient {
+  id              String    @id @default(cuid()) @db.NVarChar(32)
+  instanceStageId String    @db.NVarChar(32)
+  documentId      String    @db.NVarChar(32)
+  userId          String    @db.NVarChar(32)
+  status          String    @default("GRANTED") @db.NVarChar(20)
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+
+  instanceStage WorkflowInstanceStage @relation(fields: [instanceStageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document      Document              @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([instanceStageId, userId])
+  @@index([userId, status, documentId])
+  @@index([documentId, status])
+}
+
+model WorkflowTask {
+  id              String    @id @default(cuid()) @db.NVarChar(32)
+  instanceId      String    @db.NVarChar(32)
+  instanceStageId String?   @db.NVarChar(32)
+  stepId          String?   @db.NVarChar(32)
+  documentId      String    @db.NVarChar(32)
+  assignedToId    String?   @db.NVarChar(32)
+  assignedRole    String?   @db.NVarChar(40)
+  status          String    @default("PENDING") @db.NVarChar(40)
+  name            String    @db.NVarChar(180)
+  order           Int
+  version         Int       @default(1)
+  dueAt           DateTime?
+  completedAt     DateTime?
+  delegatedFromId String?   @db.NVarChar(32)
+  createdAt       DateTime  @default(now())
+
+  instance      WorkflowInstance        @relation(fields: [instanceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  instanceStage WorkflowInstanceStage?  @relation(fields: [instanceStageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  step          WorkflowStep?           @relation(fields: [stepId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document      Document                @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedTo    User?                   @relation("AssignedTaskUser", fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  delegatedFrom User?                   @relation("DelegatedFromUser", fields: [delegatedFromId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  candidates    WorkflowTaskCandidate[]
+  actions       WorkflowAction[]
+  comments      Comment[]
+  notifications Notification[]
+
+  @@index([assignedToId, status, dueAt])
+  @@index([assignedRole, status, dueAt])
+  @@index([documentId, status])
+  @@index([instanceId, status, order])
+  @@index([instanceStageId, status])
+}
+
+model WorkflowTaskCandidate {
+  id        String   @id @default(cuid()) @db.NVarChar(32)
+  taskId    String   @db.NVarChar(32)
+  userId    String?  @db.NVarChar(32)
+  roleId    String?  @db.NVarChar(32)
+  groupId   String?  @db.NVarChar(32)
+  source    String   @db.NVarChar(40)
+  createdAt DateTime @default(now())
+
+  task  WorkflowTask @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user  User?        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role  Role?        @relation(fields: [roleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  group Group?       @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([taskId])
+  @@index([userId, taskId])
+  @@index([roleId, taskId])
+  @@index([groupId, taskId])
+}
+
+model WorkflowAction {
+  id         String   @id @default(cuid()) @db.NVarChar(32)
+  taskId     String?  @db.NVarChar(32)
+  documentId String   @db.NVarChar(32)
+  userId     String   @db.NVarChar(32)
+  actionType String   @db.NVarChar(60)
+  comment    String?  @db.NVarChar(Max)
+  createdAt  DateTime @default(now())
+
+  task     WorkflowTask? @relation(fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  document Document      @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user     User          @relation("ActionUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([documentId, createdAt])
+  @@index([taskId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model ApprovalRule {
+  id             String    @id @default(cuid()) @db.NVarChar(32)
+  name           String    @db.NVarChar(180)
+  priority       Int       @default(100)
+  documentTypeId String?   @db.NVarChar(32)
+  conditionsJson String    @db.NVarChar(Max)
+  actionsJson    String    @db.NVarChar(Max)
+  validFrom      DateTime?
+  validTo        DateTime?
+  isActive       Boolean   @default(true)
+
+  documentType DocumentType? @relation(fields: [documentTypeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([documentTypeId, isActive, priority])
+  @@index([isActive, validFrom, validTo])
+}
+
+model Comment {
+  id         String   @id @default(cuid()) @db.NVarChar(32)
+  documentId String   @db.NVarChar(32)
+  userId     String   @db.NVarChar(32)
+  taskId     String?  @db.NVarChar(32)
+  body       String   @db.NVarChar(Max)
+  visibility String   @default("INTERNAL") @db.NVarChar(60)
+  createdAt  DateTime @default(now())
+
+  document Document      @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user     User          @relation("CommentUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  task     WorkflowTask? @relation(fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([documentId, createdAt])
+  @@index([taskId, createdAt])
+}
+
+model Notification {
+  id         String    @id @default(cuid()) @db.NVarChar(32)
+  userId     String    @db.NVarChar(32)
+  documentId String?   @db.NVarChar(32)
+  taskId     String?   @db.NVarChar(32)
+  type       String    @db.NVarChar(60)
+  title      String    @db.NVarChar(180)
+  body       String    @db.NVarChar(500)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user     User          @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  document Document?     @relation(fields: [documentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  task     WorkflowTask? @relation(fields: [taskId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, readAt, createdAt])
+  @@index([documentId, createdAt])
+  @@index([taskId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid()) @db.NVarChar(32)
+  userId     String?  @db.NVarChar(32)
+  entityType String   @db.NVarChar(120)
+  entityId   String?  @db.NVarChar(120)
+  action     String   @db.NVarChar(120)
+  beforeJson String?  @db.NVarChar(Max)
+  afterJson  String?  @db.NVarChar(Max)
+  ipAddress  String?  @db.NVarChar(80)
+  userAgent  String?  @db.NVarChar(300)
+  createdAt  DateTime @default(now())
+
+  user User? @relation("AuditUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+}
+
+model AuditEvent {
+  id                   String   @id @default(cuid()) @db.NVarChar(32)
+  actorUserId          String?  @db.NVarChar(32)
+  substitutedForUserId String?  @db.NVarChar(32)
+  entityType           String   @db.NVarChar(120)
+  entityId             String?  @db.NVarChar(120)
+  eventType            String   @db.NVarChar(120)
+  correlationId        String   @db.NVarChar(64)
+  recordVersion        Int?
+  statusBefore         String?  @db.NVarChar(40)
+  statusAfter          String?  @db.NVarChar(40)
+  payloadJson          String?  @db.NVarChar(Max)
+  ipAddress            String?  @db.NVarChar(80)
+  userAgent            String?  @db.NVarChar(300)
+  createdAt            DateTime @default(now())
+
+  actor          User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  substitutedFor User? @relation("AuditSubstitutedUser", fields: [substitutedForUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([correlationId])
+  @@index([actorUserId, createdAt])
+}
+
+/// Logi techniczne API i workera (błędy, poczta, praca w tle). Ślad działań ludzi jest w AuditLog/AuditEvent.
+/// Worker kasuje wpisy starsze niż LOG_RETENTION_DAYS.
+model SystemLog {
+  id          String   @id @default(cuid()) @db.NVarChar(32)
+  createdAt   DateTime
+  level       String   @db.NVarChar(10)
+  source      String   @db.NVarChar(20)
+  message     String   @db.NVarChar(500)
+  contextJson String?  @db.NVarChar(Max)
+
+  @@index([createdAt])
+  @@index([level, createdAt])
+}
+
+/// Konfiguracja edytowana na ekranie Administracja → Konfiguracja.
+/// Wartości są tekstem; `type` mówi, jak je walidować. Klucze systemowe tworzy migracja i nie da się ich usunąć.
+/// Sekrety (nazwa z PASSWORD/SECRET) leżą w bazie jawnie, API zwraca je zamaskowane (patrz SECURITY.md).
+model AppConfig {
+  id          String    @id @default(cuid()) @db.NVarChar(32)
+  key         String    @unique @db.NVarChar(100)
+  value       String?   @db.NVarChar(500)
+  type        String    @default("string") @db.NVarChar(20)
+  category    String?   @db.NVarChar(50)
+  description String?   @db.NVarChar(300)
+  isSystem    Boolean   @default(false)
+  updatedAt   DateTime  @updatedAt
+  updatedById String?   @db.NVarChar(32)
+  updatedBy   User?     @relation("AppConfigUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model OutboxMessage {
+  id            String    @id @default(cuid()) @db.NVarChar(32)
+  topic         String    @db.NVarChar(120)
+  aggregateType String    @db.NVarChar(120)
+  aggregateId   String    @db.NVarChar(120)
+  payloadJson   String    @db.NVarChar(Max)
+  availableAt   DateTime  @default(now())
+  processedAt   DateTime?
+  lockedAt      DateTime?
+  lockedBy      String?   @db.NVarChar(120)
+  attempts      Int       @default(0)
+  lastError     String?   @db.NVarChar(1000)
+  createdAt     DateTime  @default(now())
+
+  @@index([processedAt, availableAt, lockedAt])
+  @@index([aggregateType, aggregateId, createdAt])
+}
+
+model DocumentNumberSequence {
+  id        String   @id @default(cuid()) @db.NVarChar(32)
+  scope     String   @db.NVarChar(80)
+  year      Int
+  nextValue Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, year])
+}
+
+model DictionaryEntry {
+  id       String  @id @default(cuid()) @db.NVarChar(32)
+  type     String  @db.NVarChar(80)
+  key      String  @db.NVarChar(120)
+  value    String  @db.NVarChar(240)
+  isActive Boolean @default(true)
+
+  @@unique([type, key])
+  @@map("dictionaries")
+}
+
+model CostCenter {
+  id           String  @id @default(cuid()) @db.NVarChar(32)
+  code         String  @unique @db.NVarChar(60)
+  name         String  @db.NVarChar(180)
+  departmentId String? @db.NVarChar(32)
+  isActive     Boolean @default(true)
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documents  Document[]
+  projects   Project[]
+
+  @@index([departmentId])
+}
+
+model Project {
+  id           String  @id @default(cuid()) @db.NVarChar(32)
+  code         String  @unique @db.NVarChar(60)
+  name         String  @db.NVarChar(180)
+  managerId    String? @db.NVarChar(32)
+  costCenterId String? @db.NVarChar(32)
+  isActive     Boolean @default(true)
+
+  manager    User?       @relation("ProjectManager", fields: [managerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documents  Document[]
+
+  @@index([managerId])
+  @@index([costCenterId])
+}
