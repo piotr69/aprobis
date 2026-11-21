@@ -4,6 +4,9 @@
 
 Aprobis is an open-source (MIT) document workflow and approval system for companies: an employee creates a document, the system determines who must approve it, and each decision is recorded.
 
+> [!WARNING]
+> **Early version (0.0.1), not production-tested.** Aprobis has not yet been deployed in production. The Docker setup was tested end to end on a local machine; the Windows Server installer (`deployment/Install-Aprobis.ps1`) has **not** been run end to end on a clean Windows Server yet. Expect bugs and breaking changes; test on a non-production machine first and report problems in GitHub Issues. Test checklist: [docs/test-instalacji-windows.md](docs/test-instalacji-windows.md).
+
 ## What it does
 
 - Document types with their own forms (invoices, contracts, leave requests, purchase orders and more).
@@ -37,7 +40,7 @@ Approval-path settings for document types:
 | Method | Best for | Requirements |
 | --- | --- | --- |
 | [Docker](#docker-quick-start) | Fastest way to try Aprobis | Linux x86-64 or Windows x86-64 with Docker Desktop using Linux/WSL2 containers; at least 8 GiB RAM for Docker; Node.js 22+ on the host to generate secrets |
-| [Windows Server](#windows-server-installation) | Production installation with IIS | Windows Server 2019/2022, Node.js 22+, SQL Server; IIS with URL Rewrite and ARR for IIS mode |
+| [Windows Server](#windows-server-installation) (not yet tested end to end) | Production installation with IIS | Windows Server 2019/2022, Node.js 22+, SQL Server; IIS with URL Rewrite and ARR for IIS mode |
 | [Local development](#local-development) | Work on the source code | Node.js 22+, SQL Server with TCP enabled |
 
 ## Docker quick start

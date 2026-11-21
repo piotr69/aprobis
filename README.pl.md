@@ -4,6 +4,9 @@
 
 Aprobis to otwarty (licencja MIT) program do elektronicznego obiegu i akceptacji dokumentów w firmie: pracownik tworzy dokument, system ustala, kto ma go zaakceptować, a każda decyzja zostaje zapisana.
 
+> [!WARNING]
+> **Wczesna wersja (0.0.1), nieprzetestowana produkcyjnie.** Aprobis nie był jeszcze wdrożony produkcyjnie. Instalacja w Dockerze została przetestowana w całości na komputerze lokalnym; instalator Windows Server **nie był jeszcze uruchomiony w całości** na czystym serwerze. Możliwe błędy i niezgodne zmiany w kolejnych wersjach; najpierw testuj na maszynie nieprodukcyjnej i zgłaszaj problemy w GitHub Issues. Lista testu: [docs/test-instalacji-windows.md](docs/test-instalacji-windows.md).
+
 ## Co robi
 
 - Typy dokumentów z własnymi formularzami (faktury, umowy, wnioski urlopowe, zamówienia i inne).
@@ -37,7 +40,7 @@ Ustawienia ścieżek akceptacji dla typów dokumentów:
 | Sposób | Zastosowanie | Wymagania |
 | --- | --- | --- |
 | [Docker](#szybki-start-z-dockerem) | Najszybszy sposób wypróbowania Aprobis | Linux x86-64 lub Windows x86-64 z Docker Desktop i kontenerami Linux/WSL2; co najmniej 8 GiB RAM dla Dockera; Node.js 22+ na hoście do wygenerowania sekretów |
-| [Windows Server](#instalacja-na-windows-server) | Instalacja produkcyjna z IIS | Windows Server 2019/2022, Node.js 22+, SQL Server; IIS z URL Rewrite i ARR dla trybu IIS |
+| [Windows Server](#instalacja-na-windows-server) (jeszcze nieprzetestowany w całości) | Instalacja produkcyjna z IIS | Windows Server 2019/2022, Node.js 22+, SQL Server; IIS z URL Rewrite i ARR dla trybu IIS |
 | [Rozwój lokalny](#rozwój-lokalny) | Praca nad kodem | Node.js 22+, SQL Server z włączonym TCP |
 
 ## Szybki start z Dockerem
