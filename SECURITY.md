@@ -4,8 +4,8 @@
 
 Please do **not** open a public issue for security problems.
 
-Once this repository is public, report vulnerabilities through GitHub's private vulnerability reporting
-(**Security → Report a vulnerability**). Until then, contact the repository owner directly.
+Report vulnerabilities through GitHub's private vulnerability reporting:
+https://github.com/piotr69/aprobis/security/advisories/new (**Security → Report a vulnerability**).
 
 Include the affected version, steps to reproduce and the impact you observed. We will acknowledge the report,
 agree on a fix and a disclosure date with you, and credit you unless you prefer otherwise.
