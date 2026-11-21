@@ -14,6 +14,24 @@ Aprobis to otwarty (licencja MIT) program do elektronicznego obiegu i akceptacji
 
 Interfejs jest **tylko po polsku**. Wersja **0.0.1** jest na wczesnym etapie rozwoju.
 
+## Zrzuty ekranu
+
+Ekran logowania:
+
+![Ekran logowania do Aprobis](docs/assets/screenshot-login.png)
+
+Lista pracy z zadaniem do decyzji:
+
+![Lista pracy z zadaniem oczekującym na decyzję](docs/assets/screenshot-tasks.png)
+
+Dokument w trakcie akceptacji ze ścieżką i historią decyzji:
+
+![Dokument w trakcie akceptacji z ukończonym pierwszym etapem, bieżącym etapem i historią decyzji](docs/assets/screenshot-document.png)
+
+Ustawienia ścieżek akceptacji dla typów dokumentów:
+
+![Ekran administracji ścieżkami akceptacji dokumentów](docs/assets/screenshot-admin.png)
+
 ## Wybierz sposób instalacji
 
 | Sposób | Zastosowanie | Wymagania |

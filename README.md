@@ -14,6 +14,24 @@ Aprobis is an open-source (MIT) document workflow and approval system for compan
 
 The interface is **in Polish only**. Version **0.0.1** is in early development.
 
+## Screenshots
+
+Sign-in screen:
+
+![Aprobis sign-in screen](docs/assets/screenshot-login.png)
+
+Personal work queue with a task awaiting decision:
+
+![Personal work queue with a document awaiting approval decision](docs/assets/screenshot-tasks.png)
+
+Document in approval with its approval path and decision history:
+
+![Document in approval with completed first stage, current stage and decision history](docs/assets/screenshot-document.png)
+
+Approval-path settings for document types:
+
+![Administration screen for document approval paths](docs/assets/screenshot-admin.png)
+
 ## Choose an installation method
 
 | Method | Best for | Requirements |
