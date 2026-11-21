@@ -101,3 +101,28 @@ potem w `.env` adres konta aplikacji, a migracje uruchamia DBA swoim kontem.
 `deployment/New-Package.ps1` tworzy zip z plików śledzonych przez git (`-FromIndex`: ze stanu w indeksie przed commitem).
 Bez testów, danych demonstracyjnych (`prisma/seed.ts`), skryptów deweloperskich i dokumentów dla kontrybutorów —
 lista w `.gitattributes` (`export-ignore`).
+
+## Rozwiązywanie problemów
+
+**Błąd logowania Windows do SQL Server przy Docker Desktop.** Kontrola lub instalacja może zakończyć się błędem
+„Login failed. The login is from an untrusted domain and cannot be used with Integrated authentication”
+przy połączeniu z `127.0.0.1`. Dotyczy to także `sqlcmd -S tcp:127.0.0.1,1433 -E`.
+
+Przyczyną jest wpis `127.0.0.1 kubernetes.docker.internal`, który Docker Desktop dodaje do
+`C:\Windows\System32\drivers\etc\hosts`. Klient SQL używa wtedy nazwy `kubernetes.docker.internal`
+(SPN `MSSQLSvc/kubernetes.docker.internal:1433`), a ochrona Windows przed logowaniem pętli zwrotnej odrzuca
+uwierzytelnienie NTLM pod tą nazwą (dziennik `Microsoft-Windows-NTLM/Operational`, zdarzenie 4022,
+status `0xC000006D`). Sama aplikacja (Prisma) łączy się poprawnie; problem dotyczy narzędzi SQL i instalatora.
+
+Możliwe rozwiązania, od najprostszego:
+
+1. Instaluj Aprobis na serwerze bez Docker Desktop.
+2. Użyj `-SqlAdminCredential` z loginem SQL zamiast konta Windows; logowanie SQL nie korzysta z NTLM.
+3. W Docker Desktop wyłącz dopisywanie nazw `*.docker.internal` do pliku `hosts` (Settings → General) i usuń
+   wpis `127.0.0.1 kubernetes.docker.internal` z tego pliku.
+4. Jeśli potrzebujesz tego wpisu, jako administrator dodaj wyjątek w
+   `HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0`: wartość wielociągowa `BackConnectionHostNames` =
+   `kubernetes.docker.internal`. To świadoma zmiana zabezpieczenia Windows.
+
+Do ręcznego lokalnego połączenia przez pamięć współdzieloną możesz też użyć
+`sqlcmd -S lpc:.\SQLEXPRESS -E -I`.
