@@ -101,6 +101,8 @@ For a fresh database without demo data, run `npm run db:migrate:deploy`, `npm ru
 3. Configure approval paths and approval limits for your document types.
 4. Configure SMTP under **Administracja → Konfiguracja** for notifications and password reset emails.
 
+For day-to-day usage and administration details, see the [User guide](docs/user-guide.md) (also available in [Polish](docs/instrukcja-obslugi.md)).
+
 ## Configuration
 
 | Setting | Purpose |
@@ -125,10 +127,10 @@ See [.env.example](.env.example) for local/Windows settings and [.env.docker.exa
 
 Use [GitHub Issues](https://github.com/piotr69/aprobis/issues) for bugs and ideas. Report vulnerabilities **privately**, as described in [SECURITY.md](SECURITY.md), not in a public issue. See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
 
-## Documentation (Polish)
+## Documentation (Polish, except where noted)
 
 - [Docker installation](docs/instalacja-docker.md) · [Windows Server installation](docs/instalacja-windows.md)
-- [User guide](docs/instrukcja-obslugi.md) · [Workflow and roles](docs/workflow.md)
+- [User guide](docs/user-guide.md) (English; [Polish](docs/instrukcja-obslugi.md)) · [Workflow and roles](docs/workflow.md)
 - [API](docs/api.md) · [Data model](docs/model-danych.md) · [Migrations](prisma/MIGRATIONS.md)
 - [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 

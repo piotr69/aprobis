@@ -68,7 +68,7 @@ Prawo do decyzji wynika z **przydzielonego zadania**, a nie z roli. Rola określ
 | Sekretariat | + wszystkie poza kadrowymi | Archiwizuje poza kadrowymi |
 | Dyrektor | + wszystkie, także kadrowe | Raporty zbiorcze |
 | Zarząd | + wszystkie | Raporty zbiorcze |
-| Audytor | Wszystkie, także szkice | Tylko odczyt, raporty, dziennik. Bez decyzji |
+| Audytor | Wszystkie, także szkice | Tylko odczyt, raporty pełne (bez dziennika zdarzeń i logów systemowych). Bez decyzji |
 | Administrator systemu | Wszystkie, także szkice | Konfiguracja, przepisywanie zadań, wycofywanie. Bez decyzji i edycji cudzej treści |
 | Administrator słowników | Swoje i te z własnym udziałem | Typy dokumentów |
 | Tylko podgląd | Te z własnym udziałem | Bez tworzenia i decyzji |

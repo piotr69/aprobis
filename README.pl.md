@@ -121,6 +121,8 @@ Tworzy je `npm run db:seed`. Hasła są publicznie znane — tylko do środowisk
 3. Ustaw ścieżki akceptacji i limity dla typów dokumentów.
 4. Skonfiguruj SMTP w **Administracja → Konfiguracja**, aby wysyłać powiadomienia i linki do zmiany hasła.
 
+Pełny opis codziennej pracy i administracji znajdziesz w [instrukcji obsługi](docs/instrukcja-obslugi.md) (wersja angielska: [docs/user-guide.md](docs/user-guide.md)).
+
 ## Konfiguracja
 
 | Ustawienie | Znaczenie |
@@ -148,7 +150,7 @@ Błędy i pomysły zgłaszaj przez [GitHub Issues](https://github.com/piotr69/ap
 ## Dokumentacja
 
 - [Instalacja Docker](docs/instalacja-docker.md) · [Instalacja Windows Server](docs/instalacja-windows.md)
-- [Instrukcja obsługi](docs/instrukcja-obslugi.md) · [Obieg i role](docs/workflow.md) · [Scenariusze](docs/scenariusze-testowe.md)
+- [Instrukcja obsługi](docs/instrukcja-obslugi.md) ([English](docs/user-guide.md)) · [Obieg i role](docs/workflow.md) · [Scenariusze](docs/scenariusze-testowe.md)
 - [API](docs/api.md) · [Model danych](docs/model-danych.md) · [Migracje](prisma/MIGRATIONS.md)
 - [Dalsza rozbudowa](docs/dalsza-rozbudowa.md) · [Bezpieczeństwo](SECURITY.md) · [Współpraca](CONTRIBUTING.md) · [Licencje zależności](THIRD_PARTY_NOTICES.md)
 
